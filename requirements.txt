@@ -1,4 +1,3 @@
-## pip install speechrecognition
-## pip install pyaudio
-## pip install googletrans==4.0.0-rc1
-## run dit in de command line voor je projectfolder.
+speechrecognition~=3.10.4
+googletrans~=4.0.0rc1
+pyaudio~=0.2.14

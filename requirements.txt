@@ -2,6 +2,3 @@
 ## pip install pyaudio
 ## pip install googletrans==4.0.0-rc1
 ## run dit in de command line voor je projectfolder.
-
-
-##test

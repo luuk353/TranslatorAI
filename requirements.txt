@@ -1,6 +1,0 @@
-speechrecognition~=3.10.4
-googletrans~=4.0.0rc1
-pyaudio~=0.2.14
-transformers==4.32.1
-sentencepiece==0.1.96
-torch==2.0.1  # Replace with the specific version you have or need

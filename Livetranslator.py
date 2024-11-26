@@ -1,69 +1,70 @@
+import requests
 import speech_recognition as sr
-from googletrans import Translator
 import threading
-import time
-import sys
 
-# Global variable to hold recognized text
-recognized_text = ""
-translation = ""
-running = True  # To control the running status
+# DeepL API key and endpoint
+API_KEY = 'a7ad26a8-8d22-4d81-a943-b78f19f8ed98:fx'
+DEEPL_URL = 'https://api-free.deepl.com/v2/translate'
 
-def capture_audio_in_background(recognizer, microphone):
-    global recognized_text
 
-    def callback(recognizer, audio):
-        global recognized_text
-        try:
-            # Recognize speech using Google Speech Recognition
-            text = recognizer.recognize_google(audio)
-            print(f"Recognized: {text}")
-            recognized_text = text  # Update the recognized text
-        except sr.UnknownValueError:
-            # If speech is unintelligible, continue listening
-            pass
-        except sr.RequestError as e:
-            print(f"Error with the recognition service; {e}")
+# Function to translate text using DeepL API
+def translate_text(text, source_lang='EN', target_lang='NL'):
+    params = {
+        'auth_key': API_KEY,
+        'text': text,
+        'source_lang': source_lang,
+        'target_lang': target_lang,
+    }
+    response = requests.post(DEEPL_URL, data=params)
+    if response.status_code == 200:
+        translated_text = response.json()['translations'][0]['text']
+        return translated_text
+    else:
+        print("Error with DeepL API:", response.status_code)
+        return None
 
-    # Start listening in the background
-    recognizer.listen_in_background(microphone, callback, phrase_time_limit=5)
 
-def translate_text():
-    global recognized_text, translation
-    translator = Translator()
+# Function to process speech as it is recognized
+def recognize_speech_callback(recognizer, audio):
+    try:
+        # Recognize speech from the audio (in English)
+        english_text = recognizer.recognize_google(audio, language='en-US')
+        print(f"Recognized (English): {english_text}")
 
-    while running:  # Continue running while the 'running' flag is True
-        if recognized_text:  # If there is new text recognized
-            # Translate the text in real-time
-            translation = translator.translate(recognized_text, dest="nl")  # Change 'nl' to any target language
-            print(f"Translation: {translation.text}")
-        time.sleep(0.5)  # Short delay to allow for continuous updates
+        # Translate English to Dutch instantly
+        dutch_translation = translate_text(english_text)
 
-def main():
-    global running
+        if dutch_translation:
+            print(f"Translation (Dutch): {dutch_translation}")
+
+    except sr.UnknownValueError:
+        pass  # Ignore if unable to understand speech
+    except sr.RequestError:
+        print("Error with the speech recognition service.")
+
+
+# Main function to handle live speech-to-text and translation
+def live_translation():
     recognizer = sr.Recognizer()
-    microphone = sr.Microphone()
+    microphone = sr.Microphone()  # Initialize the microphone without the 'with' block
 
-    # Start the background audio capture in a separate thread
-    audio_thread = threading.Thread(target=capture_audio_in_background, args=(recognizer, microphone))
-    audio_thread.start()
+    # Start background listening (without ambient noise adjustment)
+    print("Listening for speech...")
+    while True:
+        try:
+            # Continuously listen for speech (immediate feedback)
+            audio = recognizer.listen(microphone, timeout=5)  # Timeout set to 5 seconds to allow pause
+            recognize_speech_callback(recognizer, audio)  # Process speech instantly as it is recognized
+        except sr.WaitTimeoutError:
+            continue  # Ignore timeout errors and keep listening
 
-    # Start translating in a separate thread
-    translation_thread = threading.Thread(target=translate_text)
+
+# Run live translation in a separate thread
+if __name__ == "__main__":
+    translation_thread = threading.Thread(target=live_translation)
+    translation_thread.daemon = True  # Run in the background
     translation_thread.start()
 
-    # Main thread listens for the keyboard interrupt (Ctrl+C) and stops gracefully
-    try:
-        while running:
-            if translation:
-                print(f"Live Translation: {translation.text}")
-            time.sleep(1)  # Short delay to prevent the loop from overloading the system
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-        running = False  # Set the flag to False to stop the other threads
-        audio_thread.join()  # Wait for the audio thread to finish
-        translation_thread.join()  # Wait for the translation thread to finish
-        print("Program exited gracefully.")
-
-if __name__ == "__main__":
-    main()
+    # Keep the program running indefinitely
+    while True:
+        pass

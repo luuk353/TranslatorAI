@@ -1,13 +1,63 @@
 import flet as ft
-from Googletranslate import capture_audio, translate_text as google_translate  # Google Translate logic
-from DeepL import translate_with_deepl  # Import DeepL logic
+from googletrans import Translator
+from DeepL import translate_with_deepl, capture_audio  # Import the translate function from deepl.py
+import threading
+import speech_recognition as sr
+
+# Initialize Google Translate
+translator = Translator()
 
 
+# Function to translate text using Google Translate
+def translate_text_google(text, target_language="nl"):
+    translation = translator.translate(text, dest=target_language)
+    return translation.text
+
+# Function to handle the entire translation process
+def live_translation_process(page, detected_text_box, google_translation_box, deepl_translation_box, process_box, error_box):
+    while True:
+        detected_text = capture_audio()
+        if detected_text:
+            detected_text_box.value = detected_text
+            process_box.value = f"Detected Text: {detected_text}"
+
+            # Google Translate
+            try:
+                google_translation = translate_text_google(detected_text, target_language="nl")
+                google_translation_box.value = google_translation
+            except Exception as e:
+                error_box.value = f"Google Translate Error: {str(e)}"
+
+            # DeepL Translate
+            try:
+                deepl_translation = translate_with_deepl(detected_text, target_lang="NL")
+                deepl_translation_box.value = deepl_translation
+            except Exception as e:
+                error_box.value = f"DeepL Translate Error: {str(e)}"
+
+            process_box.value = "Translation Completed"
+        else:
+            error_box.value = "Could not understand the audio"
+            process_box.value = ""
+
+        page.update()
+
+# Function to start and stop live translation
+def start_translation_thread(page, detected_text_box, google_translation_box, deepl_translation_box, process_box, error_box):
+    process_box.value = "Listening..."
+    page.update()
+
+    # Start live translation in a separate thread
+    translation_thread = threading.Thread(target=live_translation_process, args=(page, detected_text_box, google_translation_box, deepl_translation_box, process_box, error_box))
+    translation_thread.daemon = True
+    translation_thread.start()
+
+# Function to handle start/stop of the translation process in the UI
 def main(page: ft.Page):
-    page.title = "Speech-to-Text Translator Comparison (EN to NL)"
+    page.title = "Live Translation (English to Dutch)"
 
     # UI Elements
-    hello_world = ft.Text(value="Speech-to-Text Translator Comparison (English to Dutch)", color="green", size=15)
+    hello_world = ft.Text(value="Speech-to-Text Translator", color="green", size=15)
     detected_text_box = ft.TextField(height=75, width=600, label="Detected Text (English)", multiline=True)
     process_box = ft.TextField(height=75, width=600, label="Process Log", multiline=True)
     error_box = ft.TextField(height=75, width=600, label="Error Log", multiline=True, color="red")
@@ -33,76 +83,20 @@ def main(page: ft.Page):
     # Add elements to the page
     page.add(hello_world)
     page.add(detected_text_box)
-    page.add(translations_row)  # Add the row containing translation outputs
+    page.add(translations_row)
     page.add(process_box)
     page.add(error_box)
 
-    listening = False
-
+    # Button to start translation
     def on_button_click(e):
-        nonlocal listening
-        if listening:
-            process_box.value = "Stopped Listening"
-            listening = False
-        else:
-            process_box.value = "Listening..."
-            detected_text_box.value = ""
-            google_translation_box.value = ""
-            deepl_translation_box.value = ""
-            error_box.value = ""
-            listening = True
-            page.update()
+        start_translation_thread(page, detected_text_box, google_translation_box, deepl_translation_box, process_box, error_box)
 
-            def listen_and_translate():
-                while listening:
-                    process_box.value = "Listening..."
-                    page.update()
-
-                    # Capture audio
-                    text = capture_audio()
-                    if text:
-                        detected_text_box.value = text
-                        process_box.value = f"Detected Text: {text}"
-                        error_box.value = ""
-                        page.update()
-
-                        try:
-                            # Google Translate
-                            google_translation = google_translate(text, target_language="NL")
-                            google_translation_box.value = google_translation
-
-                            # DeepL Translate
-                            deepl_translation = translate_with_deepl(text, source_lang="EN", target_lang="NL")
-                            deepl_translation_box.value = deepl_translation
-
-                            process_box.value = "Translation Completed"
-                        except Exception as ex:
-                            error_box.value = f"Error: {str(ex)}"
-                            process_box.value = ""
-                        page.update()
-                    else:
-                        error_box.value = "Could not understand the audio"
-                        process_box.value = ""
-                        page.update()
-
-            listen_and_translate()
-
-    # Add button
     page.add(
         ft.ElevatedButton(
-            content=ft.Container(
-                content=ft.Column(
-                    [ft.Text(value="Click to Start/Stop", size=15)],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=5,
-                ),
-                padding=ft.padding.all(8),
-                bgcolor=ft.colors.BLUE_400,
-            ),
+            content=ft.Text(value="Start Live Translation", size=15),
             on_click=on_button_click,
         )
     )
-
 
 # Run the app
 ft.app(main)

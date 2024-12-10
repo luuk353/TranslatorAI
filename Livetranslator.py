@@ -1,9 +1,11 @@
+import os
+
 import requests
 import speech_recognition as sr
 import threading
 
 # DeepL API key and endpoint
-API_KEY = 'a7ad26a8-8d22-4d81-a943-b78f19f8ed98:fx'
+API_KEY = os.getenv("APIKEY")
 DEEPL_URL = 'https://api-free.deepl.com/v2/translate'
 
 

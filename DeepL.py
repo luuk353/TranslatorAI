@@ -1,8 +1,9 @@
+import os
 import speech_recognition as sr
 import requests
 import time
 
-DEEPL_API_KEY = 'a7ad26a8-8d22-4d81-a943-b78f19f8ed98:fx'
+DEEPL_API_KEY = os.getenv("APIKEY")
 DEEPL_URL = 'https://api-free.deepl.com/v2/translate'
 
 
